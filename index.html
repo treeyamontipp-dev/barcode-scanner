@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+  <title>Barcode Scanner</title>
+
+  <!-- Barcode Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f5f6f8;
+      color: #222;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 25px 20px 35px;
+      border-radius: 18px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 30px;
+      margin-top: 5px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 18px;
+      color: #666;
+      line-height: 1.5;
+      margin-bottom: 25px;
+    }
+
+    #reader {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 15px;
+      background: #111;
+      display: none;
+      margin-top: 20px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 70px;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      margin-top: 15px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #startButton {
+      background: #222;
+      color: white;
+    }
+
+    #stopButton {
+      background: #e9e9e9;
+      color: #222;
+      display: none;
+    }
+
+    #scanAgainButton {
+      background: #222;
+      color: white;
+      display: none;
+    }
+
+    #status {
+      margin-top: 20px;
+      padding: 18px;
+      background: #f1f3f5;
+      border-radius: 14px;
+      text-align: center;
+      font-size: 19px;
+      line-height: 1.5;
+    }
+
+    #resultBox {
+      display: none;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 14px;
+      background: #eef7ee;
+      text-align: center;
+    }
+
+    .result-title {
+      font-size: 19px;
+      margin-bottom: 10px;
+    }
+
+    #barcodeResult {
+      font-size: 30px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+
+    .success {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+
+<body>
+
+<div class="container">
+
+  <h1>📦 Barcode Scanner</h1>
+
+  <div class="subtitle">
+    เปิดกล้องแล้วนำ Barcode สินค้าให้อยู่ในกรอบ
+    <br>
+    ระบบจะอ่านให้อัตโนมัติ
+  </div>
+
+
+  <button
+    id="startButton"
+    onclick="startScanner()">
+
+    📷 เปิดกล้องสแกน Barcode
+
+  </button>
+
+
+  <button
+    id="stopButton"
+    onclick="stopScanner()">
+
+    ✖ ปิดกล้อง
+
+  </button>
+
+
+  <!-- กล้อง -->
+  <div id="reader"></div>
+
+
+  <!-- สถานะ -->
+  <div id="status">
+
+    พร้อมสแกน Barcode
+
+  </div>
+
+
+  <!-- ผลลัพธ์ -->
+  <div id="resultBox">
+
+    <div class="success">
+      ✅ สแกนสำเร็จ
+    </div>
+
+    <div class="result-title">
+      Barcode
+    </div>
+
+    <div id="barcodeResult">
+    </div>
+
+  </div>
+
+
+  <button
+    id="scanAgainButton"
+    onclick="startScanner()">
+
+    📷 สแกนสินค้าชิ้นต่อไป
+
+  </button>
+
+</div>
+
+
+
+<script>
+
+let html5QrCode = null;
+
+let scannerRunning = false;
+
+let scanLocked = false;
+
+
+/* ===============================
+   เปิด Scanner
+================================ */
+
+async function startScanner() {
+
+  const reader =
+    document.getElementById("reader");
+
+  const status =
+    document.getElementById("status");
+
+  const startButton =
+    document.getElementById("startButton");
+
+  const stopButton =
+    document.getElementById("stopButton");
+
+  const scanAgainButton =
+    document.getElementById("scanAgainButton");
+
+  const resultBox =
+    document.getElementById("resultBox");
+
+
+  if (scannerRunning) {
+    return;
+  }
+
+
+  scanLocked = false;
+
+  resultBox.style.display = "none";
+
+  scanAgainButton.style.display = "none";
+
+  reader.style.display = "block";
+
+  startButton.style.display = "none";
+
+  stopButton.style.display = "block";
+
+  status.innerHTML =
+    "📷 กำลังขออนุญาตเปิดกล้อง...";
+
+
+  try {
+
+    html5QrCode =
+      new Html5Qrcode("reader");
+
+
+    const config = {
+
+      fps: 15,
+
+      qrbox: function(
+        viewfinderWidth,
+        viewfinderHeight
+      ) {
+
+        const width =
+          Math.floor(
+            Math.min(
+              viewfinderWidth * 0.90,
+              400
+            )
+          );
+
+        const height =
+          Math.floor(
+            Math.min(
+              width * 0.45,
+              180
+            )
+          );
+
+        return {
+          width: width,
+          height: height
+        };
+      },
+
+      aspectRatio: 1.777778
+    };
+
+
+    /*
+      ขอใช้กล้องหลังของมือถือ
+    */
+
+    await html5QrCode.start(
+
+      {
+        facingMode: {
+          exact: "environment"
+        }
+      },
+
+      config,
+
+      barcodeDetected,
+
+      function(errorMessage) {
+
+        // ยังไม่เจอ Barcode
+        // ให้กล้องอ่านต่อไป
+
+      }
+
+    );
+
+
+    scannerRunning = true;
+
+
+    status.innerHTML =
+      "🔎 นำ Barcode ให้อยู่ในกรอบ";
+
+
+  } catch (error) {
+
+
+    console.error(error);
+
+
+    /*
+      ถ้า exact environment ไม่ได้
+      ลองเปิดกล้องหลังแบบทั่วไป
+    */
+
+    try {
+
+
+      if (html5QrCode) {
+
+        try {
+          await html5QrCode.clear();
+        } catch (e) {}
+
+      }
+
+
+      html5QrCode =
+        new Html5Qrcode("reader");
+
+
+      await html5QrCode.start(
+
+        {
+          facingMode: "environment"
+        },
+
+        {
+          fps: 15,
+
+          qrbox: {
+            width: 300,
+            height: 140
+          }
+        },
+
+        barcodeDetected,
+
+        function(errorMessage) {}
+
+      );
+
+
+      scannerRunning = true;
+
+
+      status.innerHTML =
+        "🔎 นำ Barcode ให้อยู่ในกรอบ";
+
+
+    } catch (secondError) {
+
+
+      console.error(secondError);
+
+
+      scannerRunning = false;
+
+
+      reader.style.display = "none";
+
+      startButton.style.display = "block";
+
+      stopButton.style.display = "none";
+
+
+      status.innerHTML =
+        "❌ ไม่สามารถเปิดกล้องได้<br><br>" +
+        "กรุณาตรวจสอบว่า Browser อนุญาตให้เว็บไซต์ใช้กล้อง";
+
+
+    }
+
+  }
+
+}
+
+
+
+/* ===============================
+   เมื่อสแกนเจอ Barcode
+================================ */
+
+async function barcodeDetected(
+  decodedText,
+  decodedResult
+) {
+
+
+  if (scanLocked) {
+    return;
+  }
+
+
+  scanLocked = true;
+
+
+  const barcode =
+    String(decodedText || "").trim();
+
+
+  if (!barcode) {
+
+    scanLocked = false;
+
+    return;
+
+  }
+
+
+  /*
+    แสดง Barcode
+  */
+
+  document
+    .getElementById("barcodeResult")
+    .innerText = barcode;
+
+
+  document
+    .getElementById("resultBox")
+    .style.display = "block";
+
+
+  document
+    .getElementById("status")
+    .innerHTML =
+      "✅ อ่าน Barcode สำเร็จ";
+
+
+  /*
+    มือถือสั่น
+  */
+
+  if (navigator.vibrate) {
+
+    navigator.vibrate([100, 50, 100]);
+
+  }
+
+
+  /*
+    ปิดกล้องหลังอ่านสำเร็จ
+  */
+
+  await stopScanner(false);
+
+
+  document
+    .getElementById("scanAgainButton")
+    .style.display = "block";
+
+}
+
+
+
+/* ===============================
+   ปิด Scanner
+================================ */
+
+async function stopScanner(
+  resetStatus = true
+) {
+
+
+  const reader =
+    document.getElementById("reader");
+
+  const startButton =
+    document.getElementById("startButton");
+
+  const stopButton =
+    document.getElementById("stopButton");
+
+  const status =
+    document.getElementById("status");
+
+
+  try {
+
+
+    if (
+      html5QrCode &&
+      scannerRunning
+    ) {
+
+      await html5QrCode.stop();
+
+    }
+
+
+    if (html5QrCode) {
+
+      try {
+
+        await html5QrCode.clear();
+
+      } catch (e) {}
+
+    }
+
+
+  } catch (error) {
+
+    console.log(error);
+
+  }
+
+
+  html5QrCode = null;
+
+  scannerRunning = false;
+
+
+  reader.style.display = "none";
+
+  reader.innerHTML = "";
+
+
+  stopButton.style.display = "none";
+
+
+  if (resetStatus) {
+
+    startButton.style.display = "block";
+
+    status.innerHTML =
+      "พร้อมสแกน Barcode";
+
+  }
+
+}
+
+
+
+/* ===============================
+   ปิดกล้องเมื่อออกจากหน้า
+================================ */
+
+window.addEventListener(
+  "pagehide",
+  function() {
+
+    if (scannerRunning) {
+
+      stopScanner();
+
+    }
+
+  }
+);
+
+</script>
+
+</body>
+</html>
