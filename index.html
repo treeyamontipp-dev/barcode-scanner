@@ -235,12 +235,48 @@ button {
 <script>
 
 /* ========================================
-   URL ระบบ Apps Script ของเบส
+   URL Apps Script สำรอง
 ======================================== */
 
-const APP_URL =
+const DEFAULT_APP_URL =
   "https://script.google.com/macros/s/AKfycbzpsYUERAIgBZX3oANef_MerA3lS222I9AxAYKU9Nx67JqcRw_dVfEp83ZudryZW-6R/exec";
 
+
+/* ========================================
+   รับ return URL และ token
+   ที่ Apps Script ส่งมาให้ Scanner
+======================================== */
+
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
+
+
+const RECEIVED_RETURN_URL =
+  params.get("return") || "";
+
+
+const SCAN_TOKEN =
+  params.get("token") || "";
+
+
+/*
+  ถ้ามี return จาก Apps Script
+  ใช้ URL นั้น
+
+  ถ้าไม่มี
+  ใช้ URL สำรอง
+*/
+
+const APP_URL =
+  RECEIVED_RETURN_URL ||
+  DEFAULT_APP_URL;
+
+
+/* ========================================
+   Elements
+======================================== */
 
 const video =
   document.getElementById("video");
@@ -295,16 +331,10 @@ async function startCamera() {
     );
 
     return;
-
   }
 
 
   try {
-
-    /*
-      ใช้ ideal เพื่อขอกล้องหลัง
-      โดยไม่บังคับจนเกิด NotFoundError
-    */
 
     stream =
       await navigator.mediaDevices.getUserMedia({
@@ -336,11 +366,6 @@ async function startCamera() {
 
   } catch (error) {
 
-
-    /*
-      ถ้าขอกล้องหลังไม่สำเร็จ
-      ลองเปิด Video ธรรมดา
-    */
 
     try {
 
@@ -394,7 +419,6 @@ async function prepareDetector() {
     );
 
     return;
-
   }
 
 
@@ -471,7 +495,6 @@ async function scanLoop() {
   ) {
 
     return;
-
   }
 
 
@@ -502,7 +525,6 @@ async function scanLoop() {
           barcodeFound(value);
 
           return;
-
         }
 
       }
@@ -512,8 +534,8 @@ async function scanLoop() {
   } catch (error) {
 
     /*
-      ถ้า detect พลาดชั่วคราว
-      ให้ทำงานต่อ
+      ถ้า Detect พลาดชั่วคราว
+      ให้สแกนต่อ
     */
 
   }
@@ -567,24 +589,66 @@ function barcodeFound(value) {
 
 
   /*
-    ไม่ใช้ window.opener แล้ว
+    ========================================
+    จุดสำคัญ
 
-    ส่งกลับ Apps Script โดยตรง
-    พร้อม Barcode
+    ส่งกลับ Apps Script พร้อมทั้ง
+
+    1. barcode
+    2. token
+
+    Token ต้องเป็นตัวเดิม
+    ที่ Apps Script ส่งมาให้ Scanner
+    ========================================
   */
 
-  const returnUrl =
+
+  let separator = "?";
+
+
+  /*
+    กันกรณี APP_URL มี ? อยู่แล้ว
+  */
+
+  if (APP_URL.includes("?")) {
+
+    separator = "&";
+
+  }
+
+
+  let returnUrl =
 
     APP_URL +
 
-    "?barcode=" +
+    separator +
+
+    "barcode=" +
 
     encodeURIComponent(value);
 
 
   /*
-    แสดงผลประมาณครึ่งวินาที
-    แล้วกลับระบบหลัก
+    ถ้ามี Token
+    ต้องส่ง Token กลับไปด้วย
+  */
+
+  if (SCAN_TOKEN) {
+
+    returnUrl +=
+
+      "&token=" +
+
+      encodeURIComponent(
+        SCAN_TOKEN
+      );
+
+  }
+
+
+  /*
+    แสดงผลสั้น ๆ
+    แล้วกลับ Apps Script
   */
 
   setTimeout(
@@ -595,7 +659,7 @@ function barcodeFound(value) {
       );
 
     },
-    500
+    700
   );
 
 }
@@ -638,9 +702,11 @@ function showError(message) {
 
   scanning = false;
 
+
   statusBox.innerHTML =
     "❌ " +
     escapeHtml(message);
+
 
   startBtn.style.display =
     "block";
@@ -649,15 +715,49 @@ function showError(message) {
 
 
 /* ========================================
-   กลับระบบหลัก
+   ปุ่มกลับ
 ======================================== */
 
 function goBack() {
 
   stopCamera();
 
-  window.location.href =
+
+  /*
+    ถ้ายังไม่ได้สแกน
+    กลับระบบหลัก
+
+    แต่ส่ง Token กลับไปด้วย
+    เพื่อไม่ให้ข้อมูลเดิมหาย
+  */
+
+  let separator =
+    APP_URL.includes("?")
+      ? "&"
+      : "?";
+
+
+  let returnUrl =
     APP_URL;
+
+
+  if (SCAN_TOKEN) {
+
+    returnUrl +=
+
+      separator +
+
+      "token=" +
+
+      encodeURIComponent(
+        SCAN_TOKEN
+      );
+
+  }
+
+
+  window.location.href =
+    returnUrl;
 
 }
 
@@ -684,18 +784,29 @@ function escapeHtml(text) {
 
 
 /* ========================================
-   เปิดกล้องทันที
+   เปิดกล้องอัตโนมัติ
 ======================================== */
 
 window.addEventListener(
   "load",
   function() {
 
+    /*
+      เช็กก่อนว่า Scanner ได้ Token มาหรือไม่
+
+      ถึงไม่มี Token กล้องก็ยังเปิดได้
+      แต่การกลับไปคืน State จะทำไม่ได้
+  */
+
     startCamera();
 
   }
 );
 
+
+/* ========================================
+   ปิดกล้องเมื่อออกจากหน้า
+======================================== */
 
 window.addEventListener(
   "pagehide",
