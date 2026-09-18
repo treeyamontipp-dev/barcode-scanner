@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-
 <meta charset="UTF-8">
 
 <meta
@@ -17,8 +16,7 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -40,17 +38,17 @@ body {
 }
 
 h1 {
-  margin: 8px 0 5px;
   text-align: center;
-  font-size: 27px;
+  font-size: 28px;
+  margin: 8px 0 5px;
 }
 
 .subtitle {
   text-align: center;
   color: #ddd;
   font-size: 16px;
-  margin-bottom: 16px;
   line-height: 1.5;
+  margin-bottom: 16px;
 }
 
 .camera-box {
@@ -59,9 +57,9 @@ h1 {
   height: 58vh;
   min-height: 390px;
   max-height: 620px;
-  overflow: hidden;
-  border-radius: 22px;
   background: #111;
+  border-radius: 22px;
+  overflow: hidden;
 }
 
 video {
@@ -143,8 +141,8 @@ video {
 }
 
 #barcodeText {
-  margin-top: 7px;
-  font-size: 28px;
+  margin-top: 8px;
+  font-size: 29px;
   font-weight: bold;
   word-break: break-all;
 }
@@ -165,19 +163,12 @@ button {
   color: #111;
 }
 
-#switchBtn {
-  display: none;
-  background: #444;
-  color: #fff;
-}
-
 #backBtn {
   background: #292929;
   color: #fff;
 }
 
 </style>
-
 </head>
 
 <body>
@@ -191,7 +182,6 @@ button {
     ระบบจะอ่านให้อัตโนมัติ
   </div>
 
-
   <div class="camera-box">
 
     <video
@@ -202,23 +192,18 @@ button {
     </video>
 
     <div class="scan-frame">
-
       <div class="corner tl"></div>
       <div class="corner tr"></div>
       <div class="corner bl"></div>
       <div class="corner br"></div>
-
       <div class="scan-line"></div>
-
     </div>
 
   </div>
 
-
   <div id="status">
     ⏳ กำลังเปิดกล้อง...
   </div>
-
 
   <div id="result">
 
@@ -232,37 +217,30 @@ button {
 
   </div>
 
-
   <button
     id="startBtn"
     onclick="startCamera()">
-
     📷 เปิดกล้อง
-
   </button>
-
-
-  <button
-    id="switchBtn"
-    onclick="switchCamera()">
-
-    🔄 สลับกล้อง
-
-  </button>
-
 
   <button
     id="backBtn"
     onclick="goBack()">
-
     ← กลับ
-
   </button>
 
 </div>
 
 
 <script>
+
+/* ========================================
+   URL ระบบ Apps Script ของเบส
+======================================== */
+
+const APP_URL =
+  "https://script.google.com/macros/s/AKfycbzpsYUERAIgBZX3oANef_MerA3lS222I9AxAYKU9Nx67JqcRw_dVfEp83ZudryZW-6R/exec";
+
 
 const video =
   document.getElementById("video");
@@ -279,9 +257,6 @@ const barcodeText =
 const startBtn =
   document.getElementById("startBtn");
 
-const switchBtn =
-  document.getElementById("switchBtn");
-
 
 let stream = null;
 
@@ -291,14 +266,10 @@ let scanning = false;
 
 let detected = false;
 
-let cameras = [];
 
-let cameraIndex = 0;
-
-
-/* ==========================================
+/* ========================================
    เปิดกล้อง
-========================================== */
+======================================== */
 
 async function startCamera() {
 
@@ -331,9 +302,8 @@ async function startCamera() {
   try {
 
     /*
-      เปิดกล้องหลังโดยตรง
-      ใช้ ideal ไม่ใช้ exact
-      จึงไม่เกิด NotFoundError แบบเดิม
+      ใช้ ideal เพื่อขอกล้องหลัง
+      โดยไม่บังคับจนเกิด NotFoundError
     */
 
     stream =
@@ -345,14 +315,6 @@ async function startCamera() {
 
           facingMode: {
             ideal: "environment"
-          },
-
-          width: {
-            ideal: 1280
-          },
-
-          height: {
-            ideal: 720
           }
 
         }
@@ -369,25 +331,15 @@ async function startCamera() {
       "🔎 นำ Barcode ให้อยู่ในกรอบ";
 
 
-    /*
-      โหลดรายชื่อกล้องไว้
-      แต่ไม่ปิด/เปิดกล้องใหม่
-    */
-
-    loadCameraList();
-
-
     await prepareDetector();
 
 
   } catch (error) {
 
-    console.error(error);
-
 
     /*
-      ถ้ากล้องหลังแบบ ideal ไม่สำเร็จ
-      ลอง video ธรรมดาอีกครั้ง
+      ถ้าขอกล้องหลังไม่สำเร็จ
+      ลองเปิด Video ธรรมดา
     */
 
     try {
@@ -411,14 +363,10 @@ async function startCamera() {
         "🔎 นำ Barcode ให้อยู่ในกรอบ";
 
 
-      loadCameraList();
-
       await prepareDetector();
 
 
     } catch (error2) {
-
-      console.error(error2);
 
       showError(
         (error2.name || "Error") +
@@ -433,164 +381,9 @@ async function startCamera() {
 }
 
 
-/* ==========================================
-   โหลดรายชื่อกล้อง
-========================================== */
-
-async function loadCameraList() {
-
-  try {
-
-    const devices =
-      await navigator.mediaDevices.enumerateDevices();
-
-
-    cameras =
-      devices.filter(function(device) {
-
-        return device.kind === "videoinput";
-
-      });
-
-
-    if (cameras.length > 1) {
-
-      switchBtn.style.display =
-        "block";
-
-    }
-
-
-    /*
-      หาว่ากล้องที่กำลังใช้คือกล้องไหน
-    */
-
-    if (
-      stream &&
-      stream.getVideoTracks().length
-    ) {
-
-      const settings =
-        stream
-          .getVideoTracks()[0]
-          .getSettings();
-
-
-      const currentId =
-        settings.deviceId;
-
-
-      const found =
-        cameras.findIndex(
-          function(camera) {
-
-            return camera.deviceId === currentId;
-
-          }
-        );
-
-
-      if (found >= 0) {
-
-        cameraIndex = found;
-
-      }
-
-    }
-
-
-  } catch (error) {
-
-    console.log(error);
-
-  }
-
-}
-
-
-/* ==========================================
-   สลับกล้อง
-========================================== */
-
-async function switchCamera() {
-
-  if (cameras.length < 2) {
-    return;
-  }
-
-
-  cameraIndex++;
-
-  if (cameraIndex >= cameras.length) {
-
-    cameraIndex = 0;
-
-  }
-
-
-  const camera =
-    cameras[cameraIndex];
-
-
-  if (!camera) {
-    return;
-  }
-
-
-  stopCamera();
-
-
-  try {
-
-    stream =
-      await navigator.mediaDevices.getUserMedia({
-
-        audio: false,
-
-        video: {
-
-          deviceId: {
-            exact: camera.deviceId
-          }
-
-        }
-
-      });
-
-
-    video.srcObject = stream;
-
-    await video.play();
-
-
-    detected = false;
-
-    scanning = true;
-
-
-    statusBox.innerHTML =
-      "🔎 นำ Barcode ให้อยู่ในกรอบ";
-
-
-    scanLoop();
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    showError(
-      "สลับกล้องไม่สำเร็จ"
-    );
-
-  }
-
-}
-
-
-/* ==========================================
+/* ========================================
    เตรียม Barcode Detector
-========================================== */
+======================================== */
 
 async function prepareDetector() {
 
@@ -632,7 +425,7 @@ async function prepareDetector() {
       });
 
 
-    if (formats.length) {
+    if (formats.length > 0) {
 
       detector =
         new BarcodeDetector({
@@ -654,12 +447,8 @@ async function prepareDetector() {
 
   } catch (error) {
 
-    console.error(error);
-
-
     detector =
       new BarcodeDetector();
-
 
     scanning = true;
 
@@ -670,9 +459,9 @@ async function prepareDetector() {
 }
 
 
-/* ==========================================
-   Scan Loop
-========================================== */
+/* ========================================
+   อ่าน Barcode ต่อเนื่อง
+======================================== */
 
 async function scanLoop() {
 
@@ -723,8 +512,8 @@ async function scanLoop() {
   } catch (error) {
 
     /*
-      detect อาจ error ชั่วคราว
-      ไม่ต้องหยุด Scanner
+      ถ้า detect พลาดชั่วคราว
+      ให้ทำงานต่อ
     */
 
   }
@@ -738,9 +527,9 @@ async function scanLoop() {
 }
 
 
-/* ==========================================
-   พบ Barcode
-========================================== */
+/* ========================================
+   เมื่อพบ Barcode
+======================================== */
 
 function barcodeFound(value) {
 
@@ -774,79 +563,47 @@ function barcodeFound(value) {
   }
 
 
-  /*
-    ปิดกล้องทันที
-  */
-
   stopCamera();
 
 
   /*
-    สำคัญที่สุด:
-    ส่ง Barcode กลับไปยังหน้า Apps Script
+    ไม่ใช้ window.opener แล้ว
+
+    ส่งกลับ Apps Script โดยตรง
+    พร้อม Barcode
   */
 
-  if (
-    window.opener &&
-    !window.opener.closed
-  ) {
+  const returnUrl =
 
-    try {
+    APP_URL +
 
-      window.opener.postMessage(
+    "?barcode=" +
 
-        {
-          type: "BARCODE_SCAN",
-          barcode: value
-        },
-
-        "*"
-
-      );
-
-
-      /*
-        รอให้หน้าเดิมรับข้อมูล
-        แล้วปิดหน้า Scanner
-      */
-
-      setTimeout(
-        function() {
-
-          window.close();
-
-        },
-        500
-      );
-
-
-      return;
-
-    } catch (error) {
-
-      console.error(error);
-
-    }
-
-  }
+    encodeURIComponent(value);
 
 
   /*
-    ถ้า Browser ไม่ยอมให้ window.opener
-    จะไม่ทำ Barcode หาย
-
-    แสดงผลไว้ และให้ผู้ใช้กดกลับได้
+    แสดงผลประมาณครึ่งวินาที
+    แล้วกลับระบบหลัก
   */
 
-  statusBox.innerHTML =
-    "✅ สแกนสำเร็จ — กดกลับไปหน้าระบบ";
+  setTimeout(
+    function() {
+
+      window.location.replace(
+        returnUrl
+      );
+
+    },
+    500
+  );
 
 }
 
 
-/* ==========================================
+/* ========================================
    ปิดกล้อง
-========================================== */
+======================================== */
 
 function stopCamera() {
 
@@ -873,17 +630,17 @@ function stopCamera() {
 }
 
 
-/* ==========================================
+/* ========================================
    Error
-========================================== */
+======================================== */
 
 function showError(message) {
 
   scanning = false;
 
   statusBox.innerHTML =
-    "❌ " + escapeHtml(message);
-
+    "❌ " +
+    escapeHtml(message);
 
   startBtn.style.display =
     "block";
@@ -891,35 +648,23 @@ function showError(message) {
 }
 
 
-/* ==========================================
-   กลับ
-========================================== */
+/* ========================================
+   กลับระบบหลัก
+======================================== */
 
 function goBack() {
 
   stopCamera();
 
-
-  if (
-    window.opener &&
-    !window.opener.closed
-  ) {
-
-    window.close();
-
-    return;
-
-  }
-
-
-  history.back();
+  window.location.href =
+    APP_URL;
 
 }
 
 
-/* ==========================================
-   Escape
-========================================== */
+/* ========================================
+   Escape HTML
+======================================== */
 
 function escapeHtml(text) {
 
@@ -938,9 +683,9 @@ function escapeHtml(text) {
 }
 
 
-/* ==========================================
-   เปิดกล้องทันทีเมื่อเข้าหน้า Scanner
-========================================== */
+/* ========================================
+   เปิดกล้องทันที
+======================================== */
 
 window.addEventListener(
   "load",
